@@ -1,6 +1,7 @@
 Developement of WSN Testbed 
 ============================
 
+The following paper came out of this work : http://dl.acm.org/citation.cfm?id=2185231
 
 Requirements : Should first install TinyOS 2.1.1 with Blip support.
 
