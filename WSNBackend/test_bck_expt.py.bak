@@ -1,0 +1,340 @@
+#WSNlab Backend
+
+#Importing Libraries
+import socket
+import string
+import thread
+import threading
+import time
+import math
+
+#Setting some global variables used in main thread
+history=10
+
+#Taking some input values
+totmotes=int(raw_input("Enter the highest Node-id in your deployment : "))
+nlmnodes=int(raw_input("Enter the number of local motes deployed : "))
+numbeacon=totmotes-nlmnodes
+
+#Setting the active tag list
+active_tag=[0 for i in range(totmotes)]
+
+#Preventing no deployment scenario
+if (totmotes==0):
+	print "No motes deployed. Backend will now quit"
+	exit()
+
+#Defining a node class
+class Nodedetails():
+	def __init__(self,isbeacon,nodeid,battval,photosense,tempsensor,datalqi,location,rssi1):
+		self.isbeacon=isbeacon
+		self.nodeid=nodeid
+		self.battery=battval
+		#self.sensorout=sensorout
+		self.photosense=photosense
+		self.tempsense=tempsensor
+		self.location=location
+		self.rssi1=rssi1
+		self.datalqi=datalqi
+	def activateBeacon(self,host):
+		print "Activating Beacon"
+		beacon_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+		#beacon_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		beacon_socket.connect((host, 1234))
+		beacon_socket.send('AB')
+		beacon_socket.close()
+	def stopBeacon(self,host):
+		beacon_socket=socket.socket(socket.AF_INET6,socket.SOCK_DGRAM)
+		beacon_socket.connect((host,1234))
+		beacon_socket.send('SB')
+		beacon_socket.close()
+	def setBeacon(self,loc):
+		self.isbeacon=1
+		self.location=loc
+
+#Initializing the list for creating list of objects
+node_meta=[]
+
+#Creating the list of objects with node id initialized node_meta is the list of object.
+#We create the list of objects by using the append function of the list and using the class initialization as argument.
+
+#The class init takes argument. Here the arguments themselves are list of lists.
+#[[0,0] for i in range(3)] results in [[0,0],[0,0],[0,0]]
+
+for i in range(0,totmotes):
+	node_meta.append(Nodedetails(0,i,[[0,0] for i in range(history)],[[0,0] for i in range(history)],[0 for i in range(history)],[[0,0] for i in range(totmotes)],[0,0],[-256 for i in range(totmotes)]))
+
+#Data generator function below
+def dataProducer(data,node_ident,param):
+	global node_meta
+	if (param=="battery"):
+		if (node_meta[(node_ident-1)].battery[0]==[0,0]):
+			node_meta[(node_ident-1)].battery[0]=[hex(ord(data[0:1])),hex(ord(data[1:2]))]
+		else:
+			for i in range(history,1,-1):
+				node_meta[(node_ident-1)].battery[i-1]=node_meta[(node_ident-1)].battery[i-2]
+			node_meta[(node_ident-1)].battery[0]=[hex(ord(data[0:1])),hex(ord(data[1:2]))]
+	if (param=="photosense"):
+		if (node_meta[(node_ident-1)].photosense[0]==[0,0]):
+			node_meta[(node_ident-1)].photosense[0]=[hex(ord(data[5:6])),hex(ord(data[6:7]))]
+		else:
+			for i in range(history,1,-1):
+				node_meta[(node_ident-1)].photosense[i-1]=node_meta[(node_ident-1)].photosense[i-2]
+			node_meta[(node_ident-1)].photosense[0]=[hex(ord(data[5:6])),hex(ord(data[6:7]))]
+	if (param=="tempsense"):
+		string_val=hex(ord(data[7:8]))+hex(ord(data[8:9]))
+		string_val1=string.split('0x')
+		hex_string=string_val[1]+string_val[2]
+		int_val=int(hex_string,16)
+		Rthr=10000*(1023-int_val)/1023
+	    	inv_t=1/(0.001010024+(b*(math.log(Rthr)))+(c*((log(Rthr))^3)))
+		if (node_meta[(node_ident-1)].tempsense[0]==0):
+			node_meta[(node_ident-1)].tempsense[0]=temp
+		else:
+			for i in range(history,1,-1):
+				node_meta[(node_ident-1)].tempsense[i-1]=node_meta[(node_ident-1)].tempsense[i-2]
+			node_meta[(node_ident-1)].tempsense[0]=temp
+
+#Refresher function reinitializes the datastructure in case a particular mote switches off
+def refresher(node_ident,totmotes):
+	global history
+	global active_tag
+	global node_meta
+	global data
+	for i in range(0,totmotes):
+		if(i==(node_ident-1)):
+			active_tag[i]=100
+		else:
+			if(active_tag[i] != 0):
+				active_tag[i]=active_tag[i]-1
+			else:
+				active_tag[i]=0
+	for i in range(0,totmotes):
+		if(active_tag[i]==0):
+			node_meta[i].photosense=[[0,0] for k in range(history)]
+			node_meta[i].tempsense=[[0,0] for k in range(history)]
+			node_meta[i].battery=[[0,0] for k in range(history)]
+		data=[0 for l in range(11)]
+	for i in range(0,totmotes):
+		for j in range(0,totmotes):
+			if(active_tag[j]==0):
+				node_meta[i].rssi1[j]=-256
+				node_meta[i].datalqi[j]=[[0,0]]
+	
+# The concatenator concatenates the list values of each sensor list of lists so that it can be easily send
+# to the client without the socket being reset by the peer
+def concatenator(node_id,list_object):
+	global node_meta
+	if (list_object=="photosense"):
+		for i in range(0,history):
+			if (i==0):
+				string_list=str(node_meta[node_id].photosense[i][0])+str(node_meta[node_id].photosense[i][1])
+			if (i>0):
+				string_list=string_list+'#'+str(node_meta[node_id].photosense[i][0])+str(node_meta[node_id].photosense[i][1])
+	elif (list_object=="tempsense"):
+		for i in range(0,history):
+			if (i==0):
+				string_list=str(node_meta[node_id].tempsense[0])
+			if (i>0):
+				string_list=string_list+'#'+str(node_meta[node_id].tempsense[i])
+	elif (list_object=="activetag"):
+		for i in range(0,totmotes):
+			if (i==0):
+				string_list=str(active_tag[0])
+			if (i>0):
+				string_list=string_list+'#'+str(active_tag[i])
+	else:
+		string_list="Wrong array parameter send"
+	return(string_list)
+
+#Defining the localization algorithm
+def localize(node_ident):
+	rssi_mod=[]
+	rssi_mod.extend(node_meta[(node_ident-1)].rssi1)
+	#print "RSSI MOD VALUE"
+	#print rssi_mod
+	beacon_id=[]
+	for i in range(0,3):
+		id=(node_meta[(node_ident-1)].rssi1.index(max(rssi_mod)))
+		beacon_id.append((id))
+		print id
+		print max(rssi_mod)
+		rssi_mod.remove(max(rssi_mod))
+		print "rssi_mod"
+		print rssi_mod
+		print beacon_id
+		
+	x1=node_meta[beacon_id[0]].location[0]
+	y1=node_meta[beacon_id[0]].location[1]
+	x2=node_meta[beacon_id[1]].location[0]
+	y2=node_meta[beacon_id[1]].location[1]
+	x3=node_meta[beacon_id[2]].location[0]
+	y3=node_meta[beacon_id[2]].location[1]
+	
+	
+	avg1=node_meta[(node_ident-1)].rssi1[beacon_id[0]]
+	avg2=node_meta[(node_ident-1)].rssi1[beacon_id[1]]
+	avg3=node_meta[(node_ident-1)].rssi1[beacon_id[2]]
+	
+	d1=(-0.019*(avg1)**3)+(-2.112*(avg1)**2)+(-76.94*avg1)+(-869.4)
+	d2=(-0.019*(avg2)**3)+(-2.112*(avg2)**2)+(-76.94*avg2)+(-869.4)
+	d3=(-0.019*(avg3)**3)+(-2.112*(avg3)**2)+(-76.94*avg3)+(-869.4)
+	
+	print avg1
+	print avg2
+	print avg3
+	
+	print d1
+	print d2
+	print d3
+	
+	x1min=x1-d1
+	x1max=x1+d1
+	y1min=y1-d1
+	y1max=y1+d1
+	x2min=x2-d2
+	y2min=y2-d2
+	x2max=x2+d2
+	y2max=y2+d2
+	x3min=x3-d3
+	y3min=y3-d3
+	x3max=x3+d3
+	y3max=y3+d3
+	xmin=[x1min,x2min,x3min]
+	ymin=[y1min,y2min,y3min]
+	xmax=[x1max,x2max,x3max]
+	ymax=[y1max,y2max,y3max]
+	x_corner1=max(xmin)
+	y_corner1=max(ymin)
+	x_corner2=min(xmax)
+	y_corner2=min(ymax)
+	xtarget=(x_corner1+x_corner2)/2
+	ytarget=(y_corner1+y_corner2)/2
+	node_meta[(node_ident-1)].location=[xtarget,ytarget]
+
+def Sleeper(nid,ip_add):
+	print "Starting Sleeper Now \n"
+	global node_meta
+	time.sleep(60)
+	node_meta[nid].stopBeacon(ip_add)
+
+#Defining the frontend Listener
+def Listener():
+	print "Starting Listner Now \n"
+	global node_meta
+	Host_node='localhost'
+	port_num=12000
+	buf_size=1024
+	addr=(Host_node,port_num)
+	listenersock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+	listenersock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	listenersock.bind(addr)
+	listenersock.listen(5)
+	while 1:
+		client, address = listenersock.accept()
+		data = client.recv(buf_size)
+		split_data=data.split('|')
+		nid=int(split_data[0])
+		ip_add='fec0::'+str((nid+1))
+		if (split_data[1]=="BATTVAL"):
+			client.send(str(node_meta[nid].battery[0])+str(node_meta[nid].battery[1]))
+		elif(split_data[1]=="PHOTOSENSE"):
+			client.send(str(node_meta[nid].photosense[0][0])+str(node_meta[nid].photosense[0][1]))
+		elif(split_data[1]=="PHOTOSENSEARR"):
+			client.send(concatenator(nid,"photosense"))
+		elif(split_data[1]=="TEMPSENSEARR"):
+			client.send(concatenator(nid,"tempsense"))
+		elif(split_data[1]=="TEMPSENSE"):
+			client.send(str(node_meta[nid].tempsense[0]))
+		elif(split_data[1]=="LOC"):
+			#localize((nid+1))
+			client.send(str(node_meta[nid].location[0])+str(node_meta[nid].location[1]))
+		elif(split_data[1]=="ACTIVATEBEACON"):
+			print ip_add
+			node_meta[nid].activateBeacon(ip_add)
+			client.send("Beacon Activated")
+			thread.start_new_thread(Sleeper,(nid,ip_add))
+		elif(split_data[1]=="SETBEACON"):
+			x1=int(split_data[2])
+			y1=int(split_data[3])
+			loc=[x1,y1]
+			node_meta[nid].setBeacon(loc)
+			client.send("Command Sent")
+		else:
+			client.send("Wrong command")
+		client.close()
+
+#Starting the thread for the frontend listener
+thread.start_new_thread(Listener,())
+
+#Initializing the mote side communication sockets
+host = 'fec0::64'
+port = 1234
+size = 1024
+s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+s.bind((host,port))
+#The infinite server listener for the motes. Whatever they speak, regardless of their language is captured.
+while 1:
+	data, address = s.recvfrom(size)
+	if (len(data) != 0):
+		if "<policy-file-request/>\0" in data:
+			client.sendall("""<?xml version="1.0"?>
+			<cross-domain-policy>
+			<allow-access-from domain="localhost" to-ports="1234,8080"/>
+			</cross-domain-policy>""")
+		nodeaddr=str(address[0])
+		node_det=nodeaddr.split('::')
+		#Obtaining node ID from which the IP packet was received
+		node_ident=int(node_det[1])
+		
+		#Dumping sensor data into the datastructure
+		dataProducer(data,node_ident,"battery")
+		dataProducer(data,node_ident,"photosense")
+		dataProducer(data,node_ident,"tempsense")
+	#node_id is the id from which the data like rssi or data_lqi is obtained from. The source of source.
+		node_id=ord(data[4:5])
+		rssi1=ord(data[2:3])-45
+		rssi=ord(data[2:3])
+		
+	#If there is no broadcast beacons, RSSI will be zero, and rssi1 would return -45 thereby setting rssi_final
+	#also as -45. In order to make rssi_final as lowest for non transmit, we check if rssi is zero or not
+		if (rssi != 0):
+			#print "Yes! I am receiving rssi"
+			if (rssi1 <=0):
+				rssi_final=rssi1
+			else:
+				rssi_final=rssi1-256
+		else:
+			rssi_final= -256
+			node_id=0
+			
+	#Node_id is zero during non-transmit, as it is the source of source id. And shall only be obtained from a beacon.
+	#So when beacons are not set, Node_id is zero. As our basestation has id as fec0::64 and deployment doesn't have
+	#Nodes with TOS_NODE_ID as zero, its safe to check if (node_id!=0) and only perform the rssi operation for valid
+	#beacons whenever they transmit node_id.
+	#This hack enables us to use index numbers of the list as node_id equivalent rather than keeping a list of beacons
+	#indexes.
+		if(node_id != 0):
+		
+			#if (node_meta[(node_ident-1)].rssi1[(node_id-1)]==-256):
+				#    node_meta[(node_ident-1)].rssi1[(node_id-1)]=rssi_final
+			#else:
+				#    node_meta[(node_ident-1)].rssi3[(node_id-1)]=node_meta[(node_id-1)].rssi2[(node_id-1)]
+				#    node_meta[(node_ident-1)].rssi2[(node_id-1)]=node_meta[(node_id-1)].rssi1[(node_id-1)
+			node_meta[(node_ident-1)].rssi1[(node_id-1)]=rssi_final #Filling RSSI
+			node_meta[(node_ident-1)].datalqi[(node_id-1)]=[hex(ord(data[9:10])),hex(ord(data[10:11]))] #Filling Datalqi
+			
+	#Calling the localization function
+		localize(4)
+	
+	#Calling the refresher function to recalculate the active tag and reinitialize the datastructure in case it is required
+		refresher(node_ident,totmotes)
+		#print "RSSI field for 1st mote"
+		#print node_meta[0].rssi1
+		print "RSSI field for 4th mote"
+		print node_meta[3].rssi1
+		print "Active Tag"
+		print active_tag
+        	print node_meta[3].tempsense
+		print node_meta[3].location[0]
+		print node_meta[3].location[1]

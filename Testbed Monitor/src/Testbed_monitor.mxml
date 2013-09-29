@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- @Author : C.Rajgopal -->
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" creationComplete="init()" width="1389" height="650">
+	<fx:Script>
+		<![CDATA[
+			import flash.events.TimerEvent;
+			import flash.utils.Timer;
+			
+			import mx.collections.ArrayCollection;
+			import mx.containers.Canvas;
+			import mx.controls.Alert;
+			import mx.events.CollectionEvent;
+			[Bindable]
+			public var active_index:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			public var photosensearr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			public var tempsensearr:ArrayCollection = new ArrayCollection();
+			[Bindable]
+			public var battvalarr:ArrayCollection = new ArrayCollection();
+			public var locarr:ArrayCollection;
+			private var c:Canvas;
+			private var s:String;
+			public var node_id:uint;
+			public var pbutton_flag:Boolean;
+			public var gcbutton_flag:Boolean;
+			public var ar_index:Array;
+			public var act_index:Array;
+			public var socket:Socket;
+			public var num:int;
+			public var tempclick:Boolean = false;
+			public var photoclick:Boolean = false;
+			public var battclick:Boolean = false;
+			private var timer:Timer;
+			private var loc_timer:Timer;
+			private function init():void{
+				socket=new Socket();
+				//socket.connect("127.0.0.1",1234);
+				socket.addEventListener(Event.CLOSE, closeHandler);
+				socket.addEventListener(Event.CONNECT, connectHandler);
+				socket.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				active_index.addEventListener(CollectionEvent.COLLECTION_CHANGE,button_state);
+				socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				socket.addEventListener(ProgressEvent.SOCKET_DATA, socketDataHandler);
+				temp_button.enabled=false;
+				photo_button.enabled=false;
+				batt_button.enabled=false;
+				localizebut.enabled=false;
+				legend1.visible=false;
+				legend2.visible=false;
+				legend3.visible=false;
+				linechart2.visible=false;
+				linechart3.visible=false;
+				plotdatagrid1.visible=false;
+				x_cord.text="0";
+				y_cord.text="0";
+				setbeacon_button.enabled=false;
+				activatebeacon_button.enabled=false;
+				reboot_button.enabled=false;
+				inject_button.enabled=false;
+			}	
+			
+			private function closeHandler(event:Event):void{
+				trace("closeHandler:"+event);
+				test_text.text+="\n\nSocket Closed\n\n"
+			}
+			private function connectHandler(event:Event):void{
+				trace("connectHandler:"+event);
+				test_text.text+="\n\nSocket Connected\n\n"
+			}
+			private function ioErrorHandler(event:IOErrorEvent):void{
+				trace("ioErrorHandler:"+event);
+				test_text.text+="\n\nIOError\n\n"
+			}
+			private function securityErrorHandler(event:SecurityErrorEvent):void{
+				trace("securityErrorHandler:"+event);
+				test_text.text+="\n\nSecurity Error\n\n"
+			}
+			private function socketDataHandler(event:ProgressEvent):void{
+				trace("socketDataHandler:"+event);
+				var str:String=socket.readMultiByte(socket.bytesAvailable,"iso-8859-1");
+				ar_index=str.split("#");
+				if(ar_index[0]=="ACTIVETAG"){
+					test_text.text+=ar_index.join(",")+"\n\n";
+					for (var i:int=1; i<=ar_index.length-1; i++){
+						if(ar_index[i] != "0"){
+							active_index.addItem((i));
+						} 
+					}
+				}
+				if(ar_index[0]=="TEMPSENSE"){
+					for (var t:int=1; t<=ar_index.length-1; t++){
+						tempsensearr.addItem({value:ar_index[t],time_period:t});
+					}
+					test_text.text+=ar_index.join(",")+"\n\n";
+				}
+				if(ar_index[0]=="PHOTOSENSE"){
+					for (var j:int=1; j<=ar_index.length-1; j++){
+						photosensearr.addItem({value:ar_index[j],time_period:j});
+					}
+					test_text.text+=ar_index.join(",")+"\n\n";
+				}
+				if(ar_index[0]=="BATTVAL"){
+					for (var b:int=1; b<=ar_index.length-1; b++){
+						battvalarr.addItem({value:ar_index[b],time_period:b});
+					}
+					test_text.text+=ar_index.join(",")+"\n\n";
+					test_text.text+=battvalarr.length+"\n\n"
+				}
+				if(ar_index[0]=="LOC"){
+					test_text.text+="Entering Socket data handler for localization\n\n"
+					var x_var:int;
+					var y_var:int;
+					x_var=int(ar_index[1]);
+					y_var=int(ar_index[2]);
+					drawpoint(x_var,y_var,num);
+				}
+			}
+			private function griditemClick():void{
+				gcbutton_flag=true;
+				node_id=int(activenodes.selectedItem)-1;
+				//radiogroup1.selectedValue=null;
+				tempsensearr.removeAll();
+				photosensearr.removeAll();
+				battvalarr.removeAll();
+				test_text.text+=String(node_id)+"\n\n";
+				if (gcbutton_flag==true && pbutton_flag==true){
+					temp_button.enabled=true;
+					photo_button.enabled=true;
+					batt_button.enabled=true;
+					localizebut.enabled=true;
+					setbeacon_button.enabled=true;
+					activatebeacon_button.enabled=true;
+					reboot_button.enabled=true;
+					inject_button.enabled=true;
+				}
+			}
+			private function button_state(e:Event):void{
+				if(active_index.length==0){
+					temp_button.enabled=false;
+					photo_button.enabled=false;
+					batt_button.enabled=false;
+					localizebut.enabled=false;
+				}
+				else{
+					temp_button.enabled=true;
+					photo_button.enabled=true;
+					batt_button.enabled=true;
+					localizebut.enabled=true;
+				}
+			}
+			private function request_temp():void{
+				socket.connect("127.0.0.1",12000);
+				test_text.text+="Temp Requested\n\n";
+				tempsensearr.removeAll();
+				socket.writeUTFBytes(node_id+"|TEMPSENSEARR");
+				socket.flush();
+				plotdatagrid1.visible=false;
+				linechart1.visible=true;
+				legend1.visible=true;
+				linechart2.visible=false;
+				legend2.visible=false;
+				linechart3.visible=false;
+				legend3.visible=false;
+				tempclick = true;
+				photoclick = false;
+				battclick = false;
+			}
+			private function request_photo():void{
+				socket.connect("127.0.0.1",12000);
+				test_text.text+="Photo Requested\n\n";
+				photosensearr.removeAll();
+				socket.writeUTFBytes(node_id+"|PHOTOSENSEARR");
+				socket.flush();
+				plotdatagrid1.visible=false;
+				linechart2.visible=true;
+				legend2.visible=true;
+				linechart3.visible=false;
+				legend3.visible=false;
+				linechart1.visible=false;
+				legend1.visible=false;
+				tempclick=false;
+				photoclick=true;
+				battclick= false;
+			}
+			private function request_batt():void{
+				socket.connect("127.0.0.1",12000);
+				test_text.text+="Batt Requested\n\n";
+				battvalarr.removeAll();
+				socket.writeUTFBytes(node_id+"|BATTSENSEARR");
+				socket.flush();
+				plotdatagrid1.visible=false;
+				linechart3.visible=true;
+				legend3.visible=true;
+				linechart2.visible=false;
+				legend2.visible=false;
+				linechart1.visible=false;
+				legend1.visible=false;
+				tempclick = false;
+				photoclick = false;
+				battclick = true;
+			}
+			private function populatefn():void{
+				pbutton_flag=true;
+				socket.connect("127.0.0.1",12000);
+				active_index.removeAll();
+				socket.writeUTFBytes(64+"|SENDARR");
+				socket.flush();
+			}
+			private function chartdisplay():void{
+				plotdatagrid1.visible=false;
+				linechart1.visible=true;
+				if(tempclick==true){
+					linechart1.visible=true;
+					linechart2.visible=false;
+					linechart3.visible=false;
+				}
+				if(photoclick==true){
+					linechart1.visible=false;
+					linechart2.visible=true;
+					linechart3.visible=false;
+				}
+				if(battclick==true){
+					linechart1.visible=false;
+					linechart2.visible=false;
+					linechart3.visible=true;
+				}
+			}
+			private function griddisplay():void{
+				linechart1.visible=false;
+				linechart2.visible=false;
+				linechart3.visible=false;
+				plotdatagrid1.visible=true;
+				if(tempclick==true){
+					plotdatagrid1.dataProvider=tempsensearr
+				}
+				if(photoclick==true){
+					plotdatagrid1.dataProvider=photosensearr
+				}
+				if(battclick==true){
+					plotdatagrid1.dataProvider=battvalarr
+				}
+			}
+			private function auto_populate():void{
+				if(autopopulate.selected==true){
+					timer=new Timer(2000,60);
+					timer.addEventListener(TimerEvent.TIMER,refresh_grid);
+					timer.addEventListener(TimerEvent.TIMER_COMPLETE,reset_ptimer);
+					test_text.text+="Enters auto_populate\n\n";
+					timer.start();
+				}
+				else
+					timer.stop();
+			}
+			private function reset_ptimer(e:Event):void{
+				test_text.text+="Enters reset mode\n\n";
+				timer.reset();
+				timer.start();
+			}
+			private function refresh_grid(e:Event):void{
+				populatefn();
+			}
+			private function localize():void{
+				locarr=new ArrayCollection(active_index.toArray());
+				canvas.removeAllChildren()
+				if (locarr.length > 0)
+				{
+					loc_timer=new Timer(100,locarr.length);
+					loc_timer.addEventListener(TimerEvent.TIMER,localizeall);
+					loc_timer.addEventListener(TimerEvent.TIMER_COMPLETE,reset_loc);
+					//test_text.text+="Enters auto_populate\n\n";
+					loc_timer.start();
+				}
+			}
+			private function localizeall(e:Event):void{
+				//Alert.show("I am alerting you...");
+				socket.connect("127.0.0.1",12000);
+				if(locarr.length!=0){
+					num=locarr[0];
+					//Alert.show(""+num);
+					socket.writeUTFBytes((num-1)+"|LOC");
+					locarr.removeItemAt(0);
+				}
+				socket.flush();
+			}
+			private function reset_loc(e:Event):void{
+				loc_timer.stop();
+				socket.flush();
+				locarr=new ArrayCollection(active_index.toArray());
+			}
+			private function drawpoint(x_val:int,y_val:int,nid:int):void{
+				test_text.text+=String(x_val);
+				test_text.text+=String(y_val);
+				c=new Canvas();
+				c.graphics.beginFill(0x00339,1);
+				c.graphics.drawCircle((x_val),(y_val),10);
+				c.graphics.endFill();
+				canvas.addChild(c);
+				c.toolTip="Node ID:"+nid
+			}
+			private function setbeacon():void{
+				test_text.text+="Settting Beacon\n\n"
+				socket.connect("127.0.0.1",12000);
+				socket.writeUTFBytes(node_id+"|SETBEACON|"+x_cord.text+"|"+y_cord.text);
+				socket.flush();
+				//	activatebeacon_button.enabled=true;
+			}
+			private function activatebeacon():void{
+				test_text.text+="Activating Beacon\n\n"
+				socket.connect("127.0.0.1",12000);
+				socket.writeUTFBytes(node_id+"|ACTIVATEBEACON");
+				socket.flush();
+				//	activatebeacon_button.enabled=false;
+			}
+			private function injectfn():void{
+				test_text.text+="Injecting Program\n\n"
+				socket.connect("127.0.0.1",12000);
+				if(program_list.selectedItem=="Blink"){
+					socket.writeUTFBytes(node_id+"|INJECT|1");
+				}
+				else{
+					socket.writeUTFBytes(node_id+"|INJECT|2");
+				}
+				socket.flush();
+			}
+			private function rebootfn():void{
+				test_text.text+="Injecting Program\n\n"
+				socket.connect("127.0.0.1",12000);
+				socket.writeUTFBytes(node_id+"|REBOOT");
+				socket.flush();
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+	</fx:Declarations>
+	
+	<s:Panel x="10.15" y="0.4" width="1339" height="630" id="panel" title="Testbed Monitor" skinClass="spark.skins.spark.PanelSkin">
+		
+		<mx:DataGrid x="13" y="10" width="156" height="328" dataProvider="{active_index}" id="activenodes" itemClick="griditemClick()">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Active Nodes" dataField="col1" id="activecol"/>
+				<!--<mx:DataGridColumn headerText="Column 2" dataField="col2"/> 
+				<mx:DataGridColumn headerText="Column 3" dataField="col3"/> -->
+			</mx:columns>
+		</mx:DataGrid>
+		
+		<mx:Canvas  x="185" y="253" width="506" id="canvas" backgroundColor="#AFF0" height="334"/>
+		
+		<s:Button x="13" y="346" width="156" height="41" id="populate" label="Populate" click="populatefn()"/>
+		<s:TextArea x="13" y="439" width="156" id="test_text" height="96"/>
+		
+		<mx:LineChart x="177" y="42" id="linechart1" height="172" width="514" showDataTips="true" dataProvider="{tempsensearr}">
+			<mx:horizontalAxis>
+				<mx:LinearAxis title="Time period in ms" minimum="1"/>
+			</mx:horizontalAxis>
+			<mx:verticalAxis>
+				<mx:LinearAxis title="Temperature in Celsius"/>
+			</mx:verticalAxis>
+			<!--<mx:SeriesSlide
+			id="slideIn1"
+			duration="750"
+			direction="right"/>
+			<mx:SeriesSlide
+			id="slideOut1"
+			duration="750"
+			direction="left"/>-->
+			<!--<mx:annotationElements>
+			<mx:CartesianDataCanvas id="chartCanvas"/>
+			</mx:annotationElements>-->
+			<mx:series>
+				<mx:LineSeries id="temp_graph" displayName="TempSeries" yField="value" xField="time_period" form="curve"/>		
+			</mx:series>
+		</mx:LineChart>
+		
+		<mx:LineChart x="177" y="43" id="linechart2" height="172" width="514" showDataTips="true" dataProvider="{photosensearr}">
+			<mx:horizontalAxis>
+				<mx:LinearAxis title="Time period in ms" minimum="1"/>
+			</mx:horizontalAxis>
+			<mx:verticalAxis>
+				<mx:LinearAxis title="Light Intensity"/>
+			</mx:verticalAxis>
+			<!--<mx:SeriesSlide
+			id="slideIn2"
+			duration="750"
+			direction="right"/>
+			<mx:SeriesSlide
+			id="slideOut2"
+			duration="750"
+			direction="left"/>-->
+			<mx:series>
+				<mx:LineSeries id="photo_graph" displayName="PhotoSeries" yField="value" xField="time_period" form="curve"/>
+			</mx:series>
+		</mx:LineChart>
+		
+		<mx:LineChart x="177" y="43" id="linechart3" height="172" width="514" showDataTips="true" dataProvider="{battvalarr}">
+			<mx:horizontalAxis>
+				<mx:LinearAxis title="Time period in ms" minimum="1"/>
+			</mx:horizontalAxis>
+			<mx:verticalAxis>
+				<mx:LinearAxis title="Battery Voltage in mV"/>
+			</mx:verticalAxis>
+			<!--<mx:SeriesSlide
+			id="slideIn3"
+			duration="750"
+			direction="right"/>
+			<mx:SeriesSlide
+			id="slideOut3"
+			duration="750"
+			direction="left"/>-->
+			<mx:series>
+				<mx:LineSeries id="batt_graph" displayName="BatteryValue" yField="value" xField="time_period" form="curve"/>
+			</mx:series>
+		</mx:LineChart>
+		
+		
+		
+		<mx:Legend dataProvider="{linechart1}" x="704" y="162" id="legend1"/>
+		<mx:Legend dataProvider="{linechart2}" x="704" y="162" id="legend2"/>
+		<mx:Legend dataProvider="{linechart3}" x="704" y="162" id="legend3"/>
+		
+		<s:Label x="55" y="423" text="Debug Box" width="80"/>
+		<s:Label x="177" y="20" text="Sensed Values and Plots" width="160" height="14"/>
+		<s:Label x="177" y="233" text="Network Visualization" width="141"/>
+		<s:Label x="840" y="10" text="Choose Graph Action :"/>
+		<s:VGroup x="840" y="44" width="191" height="107">
+			<s:Button label="Get Temperature Graph" width="190" height="30" id="temp_button" click="request_temp()"/>
+			<s:Button label="Get Light Intensity Graph" width="190" height="30" id="photo_button" click="request_photo()"/>
+			<s:Button label="Get Battery Voltage Graph" width="190" height="31" id="batt_button" click="request_batt()"/>
+		</s:VGroup>
+		<mx:Image x="632" y="10" source="../bin-debug/icon_chart.png" click="chartdisplay()" width="26" height="24"/>
+		<mx:Image x="666" y="10" source="../bin-debug/icon_grid.png" height="24" width="25" click="griddisplay()"/>
+		<mx:DataGrid x="177" y="42" width="514" height="172" id="plotdatagrid1">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Data Value" dataField="value"/>
+				<mx:DataGridColumn headerText="Time Period (ms)" dataField="time_period"/>
+				<!--<mx:DataGridColumn headerText="Column 3" dataField="col3"/>-->
+			</mx:columns>
+		</mx:DataGrid>
+		<s:CheckBox  id="autopopulate" x="13" y="397" label="Auto Populate" width="156" click="auto_populate()"/>
+		<s:ComboBox x="1088.7" y="307.35" id="program_list">
+			<s:dataProvider>
+				<mx:ArrayList>
+					<fx:String>Blink</fx:String>
+					<fx:String>UDPEcho</fx:String>
+				</mx:ArrayList>
+			</s:dataProvider>
+		</s:ComboBox>
+		<s:Button x="1088.55" y="346.35" label="Inject Program" width="146" height="40" id="inject_button" click="injectfn()"/>
+		<s:Button x="1088.55" y="395.35" label="Reboot Mote " width="146" height="40" id="reboot_button" click="rebootfn()"/>
+		<s:Button x="767.4" y="346.1" label="SetBeacon" width="209" height="40" id="setbeacon_button" click="setbeacon()"/>
+		<s:Button x="767.9" y="395.4" label="ActivateBeacon" width="210" height="40" id="activatebeacon_button" click="activatebeacon()"/>
+		<s:TextArea x="845.15" y="298.15" width="44" height="25" id="x_cord"/>
+		<s:TextArea x="966.9" y="298.1" width="44" height="25" id="y_cord"/>
+		<s:Label x="768" y="306" text="X-Cordinate:" height="22"/>
+		<s:Label x="892" y="306" text="Y-Cordinate:" height="17"/>
+		<s:Label x="768" y="274" text="Beacon Settings" width="169" height="16"/>
+		<s:Label x="1089" y="287" text="OTAP:" width="134" height="12"/>
+		<s:Button label="Localize all motes" width="210" height="46" id="localizebut" click="localize()" x="768" y="444"/>
+		
+		
+	</s:Panel>
+</s:Application>

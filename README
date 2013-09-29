@@ -27,7 +27,9 @@ tools folder :
 WSNBackend:
 	This contains a python program which acts as a backend processing unit
 	and message transaction bridge between the motes working on IPv6 and 
-	web frontend working over IPv4.
+	web frontend working over IPv4.The python program should only be started
+	after starting the 'blip' tunnel driver. For more info on blip and tunnel
+	driver visit http://tinyos.stanford.edu/tinyos-wiki/index.php/BLIP_Tutorial#Step_1:_Install_an_Edge_Router
  	
 	To-Do's:
     	 1.  Place in HOME directory

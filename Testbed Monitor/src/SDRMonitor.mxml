@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600" height="628" width="1363" creationComplete="init()">
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:Panel x="10" y="10" width="1343" height="608" title="Software defined radio monitor">
+		<s:TextArea x="66" y="146" width="883" id="content" height="383"/>
+		<s:Label x="596" y="10" text="RECEPTION MONITOR" height="27" fontFamily="Verdana" textDecoration="none" fontWeight="bold" fontSize="22" fontStyle="italic" verticalAlign="middle" color="#BC2424" backgroundAlpha="1.0"/>
+		<s:Button x="990" y="189" label="Start Reception" width="133" id="start_recp" click="clickHandler()" height="34"/>
+		<s:Button x="990" y="231" label="Stop Reception" width="133" id="stop_recp" click="stopclicked()" height="34"/>
+		<s:Button x="990" y="273" label="Clear" width="133" id="clear_bttn" click="content.text=null" height="33"/>
+		<s:TextArea x="998" y="377" id="debug_box"/>
+		<s:Label x="1056" y="358" text="Debug Box" width="67"/>
+		<s:Label x="66" y="123" text="Data Reception Container" fontSize="16"/>
+		<s:Label x="990" y="146" text="Action Buttons" fontSize="16" verticalAlign="middle"/>
+	</s:Panel>
+	
+	<fx:Script>
+		<![CDATA[
+			//codeorile.org/wiki/?FlexSocket -> Modified from this code.
+			//Author : C.Rajgopal
+			import flash.events.TimerEvent;
+			import flash.utils.Timer;
+			public var socket:Socket;
+			private var timer:Timer;
+			private function clickHandler():void{
+				timer=new Timer(1000,0);
+				timer.addEventListener(TimerEvent.TIMER,open_sock);
+				//timer.addEventListener(TimerEvent.TIMER_COMPLETE,reset_timer);
+				timer.start();
+				
+			}
+			private function stopclicked():void{
+				timer.stop();
+			}
+//			private function reset_timer():void{
+//				content.text+="\n\n---------------------------------\n\n" 
+//				timer.reset();
+//				timer.start();
+//		}
+			private function init():void{
+				socket=new Socket();
+				socket.addEventListener(Event.CLOSE, closeHandler);
+				socket.addEventListener(Event.CONNECT, connectHandler);
+				socket.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				socket.addEventListener(ProgressEvent.SOCKET_DATA, socketDataHandler);
+			}
+			private function open_sock(e:Event):void{
+				socket.connect("127.0.0.1",12000);
+				socket.flush();
+				debug_box.text+="Opening sock called\n\n"
+		}
+			private function closeHandler(event:Event):void{
+				trace("closeHandler:"+event);
+				debug_box.text+="Socket Closed\n"
+			}
+			private function connectHandler(event:Event):void{
+				trace("connectHandler:"+event);
+				socket.writeUTFBytes("SENDDATA");
+				socket.flush();
+				debug_box.text+="Connected \n \n"
+			}
+			private function ioErrorHandler(event:IOErrorEvent):void{
+				trace("ioErrorHandler:"+event);
+				debug_box.text+="Within IO Error\n\n"
+			}
+			private function securityErrorHandler(event:SecurityErrorEvent):void{
+				trace("securityErrorHandler:"+event);
+				debug_box.text+="Within Security Error\n\n"
+			}
+			private function socketDataHandler(event:ProgressEvent):void{
+				trace("socketDataHandler:"+event);
+				debug_box.text+="Within Progress Data\n\n"
+				var str:String=socket.readMultiByte(socket.bytesAvailable,"iso-8859-1");
+				content.text+="MPDU Obtained \n"
+				content.text+=str+"\n\n";
+				content.validateNow();
+				content.scroller.verticalScrollBar.value=content.scroller.verticalScrollBar.maximum;
+			}
+		]]>
+	</fx:Script>
+</s:Application>

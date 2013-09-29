@@ -1,0 +1,28 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+ <head>
+  <title>Index of /tinyos-2.x/tools/platforms/mica/uisp</title>
+ </head>
+ <body>
+<h1>Index of /tinyos-2.x/tools/platforms/mica/uisp</h1>
+<table><tr><th><img src="/icons/blank.gif" alt="[ICO]"></th><th><a href="?C=N;O=D">Name</a></th><th><a href="?C=M;O=A">Last modified</a></th><th><a href="?C=S;O=A">Size</a></th><th><a href="?C=D;O=A">Description</a></th></tr><tr><th colspan="5"><hr></th></tr>
+<tr><td valign="top"><img src="/icons/back.gif" alt="[DIR]"></td><td><a href="/tinyos-2.x/tools/platforms/mica/">Parent Directory</a></td><td>&nbsp;</td><td align="right">  - </td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="AUTHORS">AUTHORS</a></td><td align="right">12-Jul-2006 10:00  </td><td align="right">716 </td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="CHANGES">CHANGES</a></td><td align="right">12-Jul-2006 10:00  </td><td align="right">9.3K</td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="COPYING">COPYING</a></td><td align="right">12-Jul-2006 10:00  </td><td align="right"> 18K</td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="ChangeLog">ChangeLog</a></td><td align="right">12-Jul-2006 10:00  </td><td align="right"> 16K</td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="INSTALL">INSTALL</a></td><td align="right">12-Jul-2006 10:00  </td><td align="right">352 </td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="Makefile.am">Makefile.am</a></td><td align="right">08-Jul-2008 05:31  </td><td align="right">2.4K</td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="TODO">TODO</a></td><td align="right">12-Jul-2006 10:00  </td><td align="right">2.5K</td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="bootstrap">bootstrap</a></td><td align="right">03-Jul-2008 13:42  </td><td align="right"> 73 </td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="configure.in">configure.in</a></td><td align="right">12-Dec-2006 10:23  </td><td align="right">2.0K</td></tr>
+<tr><td valign="top"><img src="/icons/folder.gif" alt="[DIR]"></td><td><a href="doc/">doc/</a></td><td align="right">09-Aug-2008 11:33  </td><td align="right">  - </td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="install-giveio">install-giveio</a></td><td align="right">12-Jul-2006 10:00  </td><td align="right">281 </td></tr>
+<tr><td valign="top"><img src="/icons/folder.gif" alt="[DIR]"></td><td><a href="kernel/">kernel/</a></td><td align="right">09-Aug-2008 11:33  </td><td align="right">  - </td></tr>
+<tr><td valign="top"><img src="/icons/folder.gif" alt="[DIR]"></td><td><a href="src/">src/</a></td><td align="right">09-Aug-2008 11:33  </td><td align="right">  - </td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="uisp.1.in">uisp.1.in</a></td><td align="right">12-Jul-2006 10:00  </td><td align="right">5.0K</td></tr>
+<tr><td valign="top"><img src="/icons/unknown.gif" alt="[   ]"></td><td><a href="uisp.spec.in">uisp.spec.in</a></td><td align="right">12-Dec-2006 10:23  </td><td align="right">2.2K</td></tr>
+<tr><th colspan="5"><hr></th></tr>
+</table>
+<address>Apache/2.2.9 (Debian) PHP/5.2.6-1+lenny9 with Suhosin-Patch mod_python/3.3.1 Python/2.5.2 mod_ssl/2.2.9 OpenSSL/0.9.8g mod_perl/2.0.4 Perl/v5.10.0 Server at www.tinyos.net Port 80</address>
+</body></html>
